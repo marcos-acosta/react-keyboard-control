@@ -1,4 +1,4 @@
-import React, { DOMElement, ReactNode, useCallback, useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 
 const KEYDOWN = "keydown";
 const KEYUP = "keyup";
@@ -19,7 +19,6 @@ export interface KeypressHook {
 
 interface ReactKeyboardNavProps {
   keypressHooks: KeypressHook[];
-  children?: ReactNode | ReactNode[];
   eventType?: typeof KEYDOWN | typeof KEYUP | typeof KEYPRESS;
 }
 
@@ -76,5 +75,5 @@ export default function ReactKeyboardNav(props: ReactKeyboardNavProps) {
     return () => removeEventListener(eventType, handleKeypressEvent);
   }, [handleKeypressEvent, eventType]);
 
-  return props.children;
+  return null;
 }
