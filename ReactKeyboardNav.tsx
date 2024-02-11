@@ -1,16 +1,26 @@
-import React, { ReactNode, useCallback, useEffect } from "react";
+import React, { DOMElement, ReactNode, useCallback, useEffect } from "react";
+
+const KEYDOWN = "keydown";
+const KEYUP = "keyup";
+const KEYPRESS = "keypress";
+
+const INPUT_TAG = "input";
+const TEXTAREA_TAG = "textarea";
+const TEXT_INPUT_TAGS = [INPUT_TAG, TEXTAREA_TAG];
 
 type KeypressCallbackFunction = () => void;
 
 export interface KeypressHook {
   keyboardEvent: Partial<KeyboardEvent>;
   callback: KeypressCallbackFunction;
+  allowOnTextInput?: boolean;
+  preventTyping?: boolean;
 }
 
 interface ReactKeyboardNavProps {
   keypressHooks: KeypressHook[];
   children?: ReactNode | ReactNode[];
-  eventType?: "keydown" | "keyup" | "keypress";
+  eventType?: typeof KEYDOWN | typeof KEYUP | typeof KEYPRESS;
 }
 
 type KeyboardEventKey = keyof KeyboardEvent;
@@ -20,21 +30,41 @@ const partialKeyboardEventMatch = (
   p: Partial<KeyboardEvent>
 ) =>
   Object.keys(p).every(
-    (k) =>
-      p[k as KeyboardEventKey] &&
-      o[k as KeyboardEventKey] &&
-      p[k as KeyboardEventKey] === o[k as KeyboardEventKey]
+    (k) => p[k as KeyboardEventKey] === o[k as KeyboardEventKey]
   );
+
+const keyboardEventTargetHasTag = (e: KeyboardEvent, tags: string[]) =>
+  tags.some(
+    (tag) => (e.target as Element).tagName.toUpperCase() === tag.toUpperCase()
+  );
+
+const hookMatch = (
+  event: KeyboardEvent,
+  hook: Partial<KeyboardEvent>,
+  invalidTags: string[] | null
+) =>
+  partialKeyboardEventMatch(event, hook) &&
+  !(invalidTags && keyboardEventTargetHasTag(event, invalidTags));
 
 export default function ReactKeyboardNav(props: ReactKeyboardNavProps) {
   const keypressHooks = props.keypressHooks;
-  const eventType = props.eventType || "keydown";
+  const eventType = props.eventType || KEYDOWN;
+
   const handleKeypressEvent = useCallback(
     (e: KeyboardEvent) => {
-      console.log(e);
+      let targetElement = e.target as Element;
       keypressHooks.forEach((keypressHook) => {
-        if (partialKeyboardEventMatch(e, keypressHook.keyboardEvent)) {
+        if (
+          hookMatch(
+            e,
+            keypressHook.keyboardEvent,
+            keypressHook.allowOnTextInput ? null : TEXT_INPUT_TAGS
+          )
+        ) {
           keypressHook.callback();
+          if (keypressHook.preventTyping) {
+            e.preventDefault();
+          }
         }
       });
     },
