@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 const KEYDOWN = "keydown";
 const KEYUP = "keyup";
@@ -11,7 +11,7 @@ const TEXT_INPUT_TAGS = [INPUT_TAG, TEXTAREA_TAG];
 type KeypressCallbackFunction = () => void;
 
 export interface KeypressHook {
-  keyboardEvent: Partial<KeyboardEvent>;
+  keyboardEvent: Partial<KeyboardEvent> | Partial<KeyboardEvent>[];
   callback: KeypressCallbackFunction;
   allowOnTextInput?: boolean;
   preventTyping?: boolean;
@@ -45,29 +45,70 @@ const hookMatch = (
   partialKeyboardEventMatch(event, hook) &&
   !(invalidTags && keyboardEventTargetHasTag(event, invalidTags));
 
+const getFirstFromArrayOrItem = (arrayOrItem: any | any[]) =>
+  arrayOrItem
+    ? Array.isArray(arrayOrItem)
+      ? arrayOrItem.length === 0
+        ? null
+        : arrayOrItem[0]
+      : arrayOrItem
+    : null;
+
+const executeKeypressHook = (keypressHook: KeypressHook, e: KeyboardEvent) => {
+  keypressHook.callback();
+  if (keypressHook.preventTyping) {
+    e.preventDefault();
+  }
+};
+
+const removeFirstKeypressEventInHook = (keypressHook: KeypressHook) => ({
+  ...keypressHook,
+  keyboardEvent: Array.isArray(keypressHook.keyboardEvent)
+    ? keypressHook.keyboardEvent.length > 0
+      ? keypressHook.keyboardEvent.slice(1)
+      : []
+    : [],
+});
+
 export default function ReactKeyboardNav(props: ReactKeyboardNavProps) {
+  const [candidateHooks, setCandidateHooks] = useState(props.keypressHooks);
+  const [inSequence, setInSequence] = useState(false);
   const keypressHooks = props.keypressHooks;
   const eventType = props.eventType || KEYDOWN;
 
   const handleKeypressEvent = useCallback(
     (e: KeyboardEvent) => {
-      let targetElement = e.target as Element;
-      keypressHooks.forEach((keypressHook) => {
-        if (
+      const localCandidateHooks: KeypressHook[] = (
+        inSequence ? candidateHooks : props.keypressHooks
+      ).filter((keypressHook) => {
+        let expectedKeypress: Partial<KeyboardEvent> | null =
+          getFirstFromArrayOrItem(keypressHook.keyboardEvent);
+        return (
+          expectedKeypress &&
           hookMatch(
             e,
-            keypressHook.keyboardEvent,
+            expectedKeypress,
             keypressHook.allowOnTextInput ? null : TEXT_INPUT_TAGS
           )
-        ) {
-          keypressHook.callback();
-          if (keypressHook.preventTyping) {
-            e.preventDefault();
-          }
-        }
+        );
       });
+      if (localCandidateHooks.length === 1) {
+        executeKeypressHook(localCandidateHooks[0], e);
+        setInSequence(false);
+      } else if (localCandidateHooks.length > 1) {
+        setCandidateHooks(
+          localCandidateHooks.map(removeFirstKeypressEventInHook)
+        );
+        setInSequence(true);
+      }
     },
-    [keypressHooks]
+    [
+      keypressHooks,
+      inSequence,
+      setInSequence,
+      candidateHooks,
+      setCandidateHooks,
+    ]
   );
 
   useEffect(() => {
