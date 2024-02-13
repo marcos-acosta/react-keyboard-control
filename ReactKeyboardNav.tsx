@@ -4,8 +4,6 @@ const KEYDOWN = "keydown";
 const KEYUP = "keyup";
 const KEYPRESS = "keypress";
 
-const ESCAPE = "Escape";
-
 const META = "Meta";
 const ALT = "Alt";
 const CONTROL = "Control";
@@ -28,7 +26,6 @@ export interface KeypressHook {
 interface ReactKeyboardNavProps {
   keypressHooks: KeypressHook[];
   eventType?: typeof KEYDOWN | typeof KEYUP | typeof KEYPRESS;
-  escapeToExitSequence?: boolean;
   setSequence?: (keyboardEvents: KeyboardEvent[]) => void;
   allowEarlyCompletion?: boolean;
 }
@@ -72,15 +69,6 @@ const executeKeypressHook = (keypressHook: KeypressHook, e: KeyboardEvent) => {
   }
 };
 
-// const removeFirstKeypressEventInHook = (keypressHook: KeypressHook) => ({
-//   ...keypressHook,
-//   keyboardEvent: Array.isArray(keypressHook.keyboardEvent)
-//     ? keypressHook.keyboardEvent.length > 0
-//       ? keypressHook.keyboardEvent.slice(1)
-//       : []
-//     : [],
-// });
-
 const removeFirstKeypressEventInHook = (
   keypressHook: KeypressHook
 ): [KeypressHook, boolean, boolean] => {
@@ -107,19 +95,15 @@ const removeFirstKeypressEventInHook = (
   ];
 };
 
+const orDefault = <T,>(param: undefined | T, default_value: T) =>
+  param === undefined ? default_value : param;
+
 export default function ReactKeyboardNav(props: ReactKeyboardNavProps) {
   const [candidateHooks, setCandidateHooks] = useState(props.keypressHooks);
   const [currentSequence, setCurrentSequence] = useState([] as KeyboardEvent[]);
   const keypressHooks = props.keypressHooks;
-  const eventType = props.eventType || KEYDOWN;
-  const escapeToExitSequence =
-    props.escapeToExitSequence === undefined
-      ? true
-      : props.escapeToExitSequence;
-  const allowEarlyCompletion =
-    props.allowEarlyCompletion === undefined
-      ? false
-      : props.allowEarlyCompletion;
+  const eventType = orDefault(props.eventType, KEYDOWN);
+  const allowEarlyCompletion = orDefault(props.allowEarlyCompletion, false);
 
   const addKeyboardEventToCurrentSequence = useCallback(
     (keyboardEvent: KeyboardEvent) => {
@@ -168,14 +152,10 @@ export default function ReactKeyboardNav(props: ReactKeyboardNavProps) {
 
   const handleKeypressEvent = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === ESCAPE && escapeToExitSequence) {
-        clearCurrentSequence();
-        return;
-      }
+      console.log(e);
       if (MODIFIERS.includes(e.key)) {
         return;
       }
-      console.log(e);
       const localCandidateHooks: KeypressHook[] = (
         currentSequence.length > 0 ? candidateHooks : props.keypressHooks
       ).filter((keypressHook) => {
