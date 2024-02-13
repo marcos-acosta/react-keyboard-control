@@ -12,7 +12,7 @@ This library is meant to provide a simple React hook `useKeyboardControl()` whic
 
 ## Example
 
-```
+```js
 "use client";
 
 import useKeyboardControl from "../../react-keyboard-control/src";
@@ -113,3 +113,9 @@ export default function Home() {
   );
 }
 ```
+
+## Limitations
+
+Keyboards are a bit weird. Note that control-o actually sends the "ø" key (at least on my Mac). Similarly, shift-t sends the "T" key (somewhat obviously). Also, certain command sequences get picked up by the browser (e.g. command-T opens a new tab on most browsers), which I don't believe can be prevented (and probably shouldn't).
+
+If this library doesn't support your use case (or doesn't work with your keyboard), please create an issue so we can generalize!
