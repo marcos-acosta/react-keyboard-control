@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const KEYDOWN = "keydown";
 const KEYUP = "keyup";
@@ -35,10 +35,9 @@ export interface TypedKey {
   basicRepresentation: string;
 }
 
-interface ReactKeyboardNavProps {
+interface KeyboardControlConfig {
   keypressHooks: KeypressHook[];
   eventType?: typeof KEYDOWN | typeof KEYUP | typeof KEYPRESS;
-  setSequence?: (keyboardEvents: TypedKey[]) => void;
   allowEarlyCompletion?: boolean;
 }
 
@@ -99,6 +98,11 @@ const basicFormatKey = (e: KeyboardEvent) => {
   return symbols.join("");
 };
 
+const keyboardEventToTypedKey = (keyboardEvent: KeyboardEvent): TypedKey => ({
+  event: keyboardEvent,
+  basicRepresentation: basicFormatKey(keyboardEvent),
+});
+
 const removeFirstKeypressEventInHook = (
   keypressHook: KeypressHook
 ): [KeypressHook, boolean, boolean] => {
@@ -128,35 +132,12 @@ const removeFirstKeypressEventInHook = (
 const orDefault = <T,>(param: undefined | T, default_value: T) =>
   param === undefined ? default_value : param;
 
-export default function ReactKeyboardControl(props: ReactKeyboardNavProps) {
-  const [candidateHooks, setCandidateHooks] = useState(props.keypressHooks);
-  const [currentSequence, setCurrentSequence] = useState([] as KeyboardEvent[]);
-  const keypressHooks = props.keypressHooks;
-  const eventType = orDefault(props.eventType, KEYDOWN);
-  const allowEarlyCompletion = orDefault(props.allowEarlyCompletion, false);
-
-  const addKeyboardEventToCurrentSequence = useCallback(
-    (keyboardEvent: KeyboardEvent) => {
-      const newCurrentSequence = [...currentSequence, keyboardEvent];
-      setCurrentSequence(newCurrentSequence);
-      if (props.setSequence) {
-        props.setSequence(
-          newCurrentSequence.map((event) => ({
-            event: event,
-            basicRepresentation: basicFormatKey(event),
-          }))
-        );
-      }
-    },
-    [currentSequence, setCurrentSequence, props.setSequence]
-  );
-
-  const clearCurrentSequence = useCallback(() => {
-    setCurrentSequence([]);
-    if (props.setSequence) {
-      props.setSequence([]);
-    }
-  }, [setCurrentSequence, props.setSequence]);
+export default function useKeyboardControl(config: KeyboardControlConfig) {
+  const [candidateHooks, setCandidateHooks] = useState(config.keypressHooks);
+  const [currentSequence, setCurrentSequence] = useState([] as TypedKey[]);
+  const keypressHooks = config.keypressHooks;
+  const eventType = orDefault(config.eventType, KEYDOWN);
+  const allowEarlyCompletion = orDefault(config.allowEarlyCompletion, false);
 
   const updateCandidatesAndMaybeExecuteHooks = useCallback(
     (localCandidateHooks: KeypressHook[], e: KeyboardEvent) => {
@@ -169,19 +150,19 @@ export default function ReactKeyboardControl(props: ReactKeyboardNavProps) {
         }
         if (wasLastMatch) {
           executeKeypressHook(candidateHook, e);
-          clearCurrentSequence();
+          setCurrentSequence([]);
           return;
         }
       }
       // If we're here, then we didn't execute anything
-      addKeyboardEventToCurrentSequence(e);
+      setCurrentSequence([...currentSequence, keyboardEventToTypedKey(e)]);
       setCandidateHooks(newCandidates);
     },
     [
       removeFirstKeypressEventInHook,
-      clearCurrentSequence,
-      addKeyboardEventToCurrentSequence,
       setCandidateHooks,
+      currentSequence,
+      setCurrentSequence,
     ]
   );
 
@@ -191,7 +172,7 @@ export default function ReactKeyboardControl(props: ReactKeyboardNavProps) {
         return;
       }
       const localCandidateHooks: KeypressHook[] = (
-        currentSequence.length > 0 ? candidateHooks : props.keypressHooks
+        currentSequence.length > 0 ? candidateHooks : config.keypressHooks
       ).filter((keypressHook) => {
         let expectedKeypress: Partial<KeyboardEvent> | null =
           getFirstFromArrayOrItem(keypressHook.keyboardEvent);
@@ -206,12 +187,12 @@ export default function ReactKeyboardControl(props: ReactKeyboardNavProps) {
       });
       // No matches, clear the current sequence
       if (localCandidateHooks.length === 0) {
-        clearCurrentSequence();
+        setCurrentSequence([]);
       }
       // If only one match and early completion allowed, complete it
       else if (allowEarlyCompletion && localCandidateHooks.length === 1) {
         executeKeypressHook(localCandidateHooks[0], e);
-        clearCurrentSequence();
+        setCurrentSequence([]);
       } else {
         updateCandidatesAndMaybeExecuteHooks(localCandidateHooks, e);
       }
@@ -219,8 +200,9 @@ export default function ReactKeyboardControl(props: ReactKeyboardNavProps) {
     [
       keypressHooks,
       candidateHooks,
+      currentSequence,
       setCandidateHooks,
-      clearCurrentSequence,
+      setCurrentSequence,
       updateCandidatesAndMaybeExecuteHooks,
     ]
   );
@@ -230,5 +212,5 @@ export default function ReactKeyboardControl(props: ReactKeyboardNavProps) {
     return () => removeEventListener(eventType, handleKeypressEvent);
   }, [handleKeypressEvent, eventType]);
 
-  return null;
+  return currentSequence;
 }
