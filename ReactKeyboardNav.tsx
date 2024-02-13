@@ -13,6 +13,13 @@ const INPUT_TAG = "input";
 const TEXTAREA_TAG = "textarea";
 const TEXT_INPUT_TAGS = [INPUT_TAG, TEXTAREA_TAG];
 
+const MODIFIER_SYMBOLS = {
+  META: "⌘",
+  ALT: "⌥",
+  CONTROL: "^",
+  SHIFT: "⇧",
+};
+
 type KeypressCallbackFunction = () => void;
 type Keystrokes = Partial<KeyboardEvent> | Partial<KeyboardEvent>[];
 
@@ -23,10 +30,15 @@ export interface KeypressHook {
   preventDefault?: boolean;
 }
 
+export interface TypedKey {
+  event: KeyboardEvent;
+  basicRepresentation: string;
+}
+
 interface ReactKeyboardNavProps {
   keypressHooks: KeypressHook[];
   eventType?: typeof KEYDOWN | typeof KEYUP | typeof KEYPRESS;
-  setSequence?: (keyboardEvents: KeyboardEvent[]) => void;
+  setSequence?: (keyboardEvents: TypedKey[]) => void;
   allowEarlyCompletion?: boolean;
 }
 
@@ -67,6 +79,24 @@ const executeKeypressHook = (keypressHook: KeypressHook, e: KeyboardEvent) => {
   if (keypressHook.preventDefault) {
     e.preventDefault();
   }
+};
+
+const basicFormatKey = (e: KeyboardEvent) => {
+  let symbols = [];
+  if (e.metaKey) {
+    symbols.push(MODIFIER_SYMBOLS.META);
+  }
+  if (e.altKey) {
+    symbols.push(MODIFIER_SYMBOLS.ALT);
+  }
+  if (e.ctrlKey) {
+    symbols.push(MODIFIER_SYMBOLS.CONTROL);
+  }
+  if (e.shiftKey) {
+    symbols.push(MODIFIER_SYMBOLS.SHIFT);
+  }
+  symbols.push(e.key);
+  return symbols.join("");
 };
 
 const removeFirstKeypressEventInHook = (
@@ -110,7 +140,12 @@ export default function ReactKeyboardNav(props: ReactKeyboardNavProps) {
       const newCurrentSequence = [...currentSequence, keyboardEvent];
       setCurrentSequence(newCurrentSequence);
       if (props.setSequence) {
-        props.setSequence(newCurrentSequence);
+        props.setSequence(
+          newCurrentSequence.map((event) => ({
+            event: event,
+            basicRepresentation: basicFormatKey(event),
+          }))
+        );
       }
     },
     [currentSequence, setCurrentSequence, props.setSequence]
@@ -152,7 +187,6 @@ export default function ReactKeyboardNav(props: ReactKeyboardNavProps) {
 
   const handleKeypressEvent = useCallback(
     (e: KeyboardEvent) => {
-      console.log(e);
       if (MODIFIERS.includes(e.key)) {
         return;
       }
