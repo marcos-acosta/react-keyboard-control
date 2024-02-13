@@ -128,7 +128,7 @@ const removeFirstKeypressEventInHook = (
 const orDefault = <T,>(param: undefined | T, default_value: T) =>
   param === undefined ? default_value : param;
 
-export default function ReactKeyboardNav(props: ReactKeyboardNavProps) {
+export default function ReactKeyboardControl(props: ReactKeyboardNavProps) {
   const [candidateHooks, setCandidateHooks] = useState(props.keypressHooks);
   const [currentSequence, setCurrentSequence] = useState([] as KeyboardEvent[]);
   const keypressHooks = props.keypressHooks;
