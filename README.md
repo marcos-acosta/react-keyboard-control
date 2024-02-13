@@ -15,8 +15,8 @@ This library is meant to provide a simple React hook `useKeyboardControl()` whic
 ```js
 "use client";
 
-import useKeyboardControl from "../../react-keyboard-control/src";
-import { KeypressHook, TypedKey } from "../../react-keyboard-control/src";
+import useKeyboardControl from "react-keyboard-control";
+import { KeypressHook, TypedKey } from "react-keyboard-control";
 import { useCallback, useEffect, useState } from "react";
 
 enum ColorThemes {
