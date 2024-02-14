@@ -85,9 +85,7 @@ export default function Home() {
       callback: () => alert("entered null"),
     },
   ];
-  const currentSequence: TypedKey[] = useKeyboardControl({
-    keypressHooks: keypressHooks,
-  });
+  const currentSequence: TypedKey[] = useKeyboardControl(keypressHooks);
 
   return (
     <>
