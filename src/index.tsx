@@ -28,6 +28,7 @@ export interface KeypressHook {
   callback: KeypressCallbackFunction;
   allowOnTextInput?: boolean;
   preventDefault?: boolean;
+  allowWhen?: boolean;
 }
 
 export interface TypedKey {
@@ -129,19 +130,17 @@ const orDefault = <T,>(param: undefined | T, default_value: T) =>
 /**
  * Creates an event listener to match keyboard events with callback functions.
  * @param keypressHooks - The list of KeypressHooks to manage
- * @param eventType - Which event to listen for (`keydown`, `keyup`, or `keypress`)
- * @param allowEarlyCompletion - If set to true, then a KeypressHook will be resolved as soon as it is the only remaining candidate for the current keypress sequence
+ * @param eventType - (default: `keydown`) Which event to listen for (`keydown`, `keyup`, or `keypress`)
+ * @param allowEarlyCompletion - (default: `false`) If set to true, then a KeypressHook will be resolved as soon as it is the only remaining candidate for the current keypress sequence
  * @returns A list of typed keys in the current (unresolved sequence)
  */
 export default function useKeyboardControl(
   keypressHooks: KeypressHook[],
-  eventType?: typeof KEYDOWN | typeof KEYUP | typeof KEYPRESS,
-  allowEarlyCompletion?: boolean
+  eventType: typeof KEYDOWN | typeof KEYUP | typeof KEYPRESS = KEYDOWN,
+  allowEarlyCompletion: boolean = false
 ) {
   const [candidateHooks, setCandidateHooks] = useState(keypressHooks);
   const [currentSequence, setCurrentSequence] = useState([] as TypedKey[]);
-  const internalEventType = orDefault(eventType, KEYDOWN);
-  const resolveHookEarly = orDefault(allowEarlyCompletion, false);
 
   const updateCandidatesAndMaybeExecuteHooks = useCallback(
     (localCandidateHooks: KeypressHook[], e: KeyboardEvent) => {
@@ -181,6 +180,7 @@ export default function useKeyboardControl(
         let expectedKeypress: Partial<KeyboardEvent> | null =
           getFirstFromArrayOrItem(keypressHook.keyboardEvent);
         return (
+          orDefault(keypressHook.allowWhen, true) &&
           expectedKeypress &&
           hookMatch(
             e,
@@ -194,7 +194,7 @@ export default function useKeyboardControl(
         setCurrentSequence([]);
       }
       // If only one match and early completion allowed, complete it
-      else if (resolveHookEarly && localCandidateHooks.length === 1) {
+      else if (allowEarlyCompletion && localCandidateHooks.length === 1) {
         executeKeypressHook(localCandidateHooks[0], e);
         setCurrentSequence([]);
       } else {
@@ -212,9 +212,9 @@ export default function useKeyboardControl(
   );
 
   useEffect(() => {
-    addEventListener(internalEventType, handleKeypressEvent);
-    return () => removeEventListener(internalEventType, handleKeypressEvent);
-  }, [handleKeypressEvent, internalEventType]);
+    addEventListener(eventType, handleKeypressEvent);
+    return () => removeEventListener(eventType, handleKeypressEvent);
+  }, [handleKeypressEvent, eventType]);
 
   return currentSequence;
 }

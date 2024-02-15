@@ -74,10 +74,11 @@ export default function Home() {
       allowOnTextInput: true,
       preventDefault: true,
     },
-    // When l, o, n, g is typed, send alert
+    // When l, o, n, g is typed in dark mode, send alert
     {
       keyboardEvent: [{ key: "l" }, { key: "o" }, { key: "n" }, { key: "g" }],
       callback: () => alert("that was a long key sequence"),
+      allowWhen: colorTheme === ColorThemes.DARK,
     },
     // When control o (ø) is typed, send alert
     {
@@ -112,8 +113,31 @@ export default function Home() {
 }
 ```
 
-## Limitations
+## Reference
 
-Keyboards are a bit weird. Note that control-o actually sends the "ø" key (at least on my Mac). Similarly, shift-t sends the "T" key (somewhat obviously). Also, certain command sequences get picked up by the browser (e.g. command-T opens a new tab on most browsers), which I don't believe can be prevented (and probably shouldn't).
+### `useKeyboardControl(...)`
 
-If this library doesn't support your use case (or doesn't work with your keyboard), please create an issue so we can generalize!
+- `keypressHooks`: A list of `KeypressHook` objects, describing all the keyboard events to track and their associated callback functions.
+- `eventType`: Which of the keyboard events (`"keydown"`, `"keypress"`, `"keyup"`) to track; defaults to `"keydown"`.
+- `allowEarlyCompletion`: If set to true, then a KeypressHook will be resolved as soon as it is the only remaining candidate for the current keypress sequence; defaults to `false` (you can just shorten your key sequence).
+
+### `KeypressHook` interface
+
+A KeypressHook is an object with the following:
+
+- `keyboardEvent`: This can be a single `Partial<KeyboardEvent>` or a list of them, if there are multiple keyboard events in the sequence. You can set any property of `KeyboardEvent` in order to match with the user's keyboard input (typically, just `key` will suffice).
+- `callback`: A function to execute when the keypress hook is matched.
+- `allowOnTextInput`: If set to true, then this keypress hook can still be triggered even if the `target` of the `KeyboardEvent` is an `<input>` or `<textarea>`. Defaults to `false`.
+- `preventDefault`: Whether to prevent the `KeyboardEvent`'s default action, if it could be part of a key sequence. This can be used to prevent typing in a text input. Defaults to `false`.
+- `allowWhen`: If set, this can be used to filter out certain keypress hooks based on state. For example, if `;w` is a hook that saves your work, you may want to only allow it when the user is doing something save-able. The advantage of using this instead of inside the callback (e.g. `() => isEditing() && save()`) is that the hook won't think the user is in the middle of a sequence if they press `;` in a non-saveable state.
+
+### `TypedKey` interface
+
+This hook returns a list of `TypedKey`s as the list of keys being used in the current key sequence. A `TypedKey` contains two things: an `event` (the `KeyboardEvent` itself) and a `basicRepresentation`, which is a simple string representation of the keyboard event (e.g. `"⇧T"`). This output can be used to show the user what keypresses are currently being considered by the keyboard control (similar to other editors like vi).
+
+## Notes
+
+- `{key: "t", shiftKey: true}` will **not** match a capital T, because the actual `key` recorded will be `"T"`, not `"t"`. This applies for other keypresses too, like `option-o` produces `ø` on my keyboard.
+  - Note that keyboards can be a bit weird; users may have a Mac or Windows keyboard, and further use different layouts e.g. Dvorak. Since `ø` is the `key` recorded by the `KeyboardEvent` when I press `option-o`, that's how I would register the keypress hook. But it might be possible that `option-o` produces a different `key` on a different keyboard.
+- `KeyboardEvent`s that are only meta keys (e.g. command, option) are discarded immediately, since we usually only care about the non-meta keypress that eventually follows. In other words, you can match for `⌘;` but not `⌘` alone.
+- If a key event occurs which doesn't match any candidate keypress hooks, the current key sequence will be discarded (think of hitting "escape")
