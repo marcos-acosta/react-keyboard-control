@@ -20,12 +20,11 @@ const MODIFIER_SYMBOLS = {
   SHIFT: "⇧",
 };
 
-type KeypressCallbackFunction = () => void;
 type Keystrokes = Partial<KeyboardEvent> | Partial<KeyboardEvent>[];
 
-export interface KeypressHook {
+export interface KeyboardHook {
   keyboardEvent: Keystrokes;
-  callback: KeypressCallbackFunction;
+  callback: () => void;
   allowOnTextInput?: boolean;
   preventDefault?: boolean;
   allowWhen?: boolean;
@@ -68,10 +67,13 @@ const getFirstFromArrayOrItem = (arrayOrItem: any | any[]) =>
       : arrayOrItem
     : null;
 
-const executeKeypressHook = (keypressHook: KeypressHook, e: KeyboardEvent) => {
-  keypressHook.callback();
-  if (keypressHook.preventDefault) {
-    e.preventDefault();
+const executeKeyboardHook = (
+  keyboardHook: KeyboardHook,
+  event: KeyboardEvent
+) => {
+  keyboardHook.callback();
+  if (keyboardHook.preventDefault) {
+    event.preventDefault();
   }
 };
 
@@ -98,10 +100,10 @@ const keyboardEventToTypedKey = (keyboardEvent: KeyboardEvent): TypedKey => ({
   basicRepresentation: basicFormatKey(keyboardEvent),
 });
 
-const removeFirstKeypressEventInHook = (
-  keypressHook: KeypressHook
-): [KeypressHook, boolean, boolean] => {
-  const keyboardEvent = keypressHook.keyboardEvent;
+const removeFirstKeyboardEventInHook = (
+  keyboardHook: KeyboardHook
+): [KeyboardHook, boolean, boolean] => {
+  const keyboardEvent = keyboardHook.keyboardEvent;
   let wasLastMatch = false;
   let newKeyboardEvent = [] as Partial<KeyboardEvent>[];
   if (Array.isArray(keyboardEvent)) {
@@ -118,7 +120,7 @@ const removeFirstKeypressEventInHook = (
     wasLastMatch = true;
   }
   return [
-    { ...keypressHook, keyboardEvent: newKeyboardEvent },
+    { ...keyboardHook, keyboardEvent: newKeyboardEvent },
     wasLastMatch,
     newKeyboardEvent.length > 0,
   ];
@@ -129,30 +131,30 @@ const orDefault = <T,>(param: undefined | T, default_value: T) =>
 
 /**
  * Creates an event listener to match keyboard events with callback functions.
- * @param keypressHooks - The list of KeypressHooks to manage
+ * @param keyboardHooks - The list of KeyboardHooks to manage
  * @param eventType - (default: `keydown`) Which event to listen for (`keydown`, `keyup`, or `keypress`)
- * @param allowEarlyCompletion - (default: `false`) If set to true, then a KeypressHook will be resolved as soon as it is the only remaining candidate for the current keypress sequence
+ * @param allowEarlyCompletion - (default: `false`) If set to true, then a KeyboardHook will be resolved as soon as it is the only remaining candidate for the current keystroke sequence
  * @returns A list of typed keys in the current (unresolved sequence)
  */
 export default function useKeyboardControl(
-  keypressHooks: KeypressHook[],
+  keyboardHooks: KeyboardHook[],
   eventType: typeof KEYDOWN | typeof KEYUP | typeof KEYPRESS = KEYDOWN,
   allowEarlyCompletion: boolean = false
 ) {
-  const [candidateHooks, setCandidateHooks] = useState(keypressHooks);
+  const [candidateHooks, setCandidateHooks] = useState(keyboardHooks);
   const [currentSequence, setCurrentSequence] = useState([] as TypedKey[]);
 
   const updateCandidatesAndMaybeExecuteHooks = useCallback(
-    (localCandidateHooks: KeypressHook[], e: KeyboardEvent) => {
-      let newCandidates = [] as KeypressHook[];
+    (localCandidateHooks: KeyboardHook[], e: KeyboardEvent) => {
+      let newCandidates = [] as KeyboardHook[];
       for (const candidateHook of localCandidateHooks) {
         const [updatedHook, wasLastMatch, keep] =
-          removeFirstKeypressEventInHook(candidateHook);
+          removeFirstKeyboardEventInHook(candidateHook);
         if (keep) {
           newCandidates.push(updatedHook);
         }
         if (wasLastMatch) {
-          executeKeypressHook(candidateHook, e);
+          executeKeyboardHook(candidateHook, e);
           setCurrentSequence([]);
           return;
         }
@@ -162,30 +164,30 @@ export default function useKeyboardControl(
       setCandidateHooks(newCandidates);
     },
     [
-      removeFirstKeypressEventInHook,
+      removeFirstKeyboardEventInHook,
       setCandidateHooks,
       currentSequence,
       setCurrentSequence,
     ]
   );
 
-  const handleKeypressEvent = useCallback(
+  const handleKeyboardEvent = useCallback(
     (e: KeyboardEvent) => {
       if (MODIFIERS.includes(e.key)) {
         return;
       }
-      const localCandidateHooks: KeypressHook[] = (
-        currentSequence.length > 0 ? candidateHooks : keypressHooks
-      ).filter((keypressHook) => {
-        let expectedKeypress: Partial<KeyboardEvent> | null =
-          getFirstFromArrayOrItem(keypressHook.keyboardEvent);
+      const localCandidateHooks: KeyboardHook[] = (
+        currentSequence.length > 0 ? candidateHooks : keyboardHooks
+      ).filter((keyboardHook) => {
+        let expectedKeystroke: Partial<KeyboardEvent> | null =
+          getFirstFromArrayOrItem(keyboardHook.keyboardEvent);
         return (
-          orDefault(keypressHook.allowWhen, true) &&
-          expectedKeypress &&
+          orDefault(keyboardHook.allowWhen, true) &&
+          expectedKeystroke &&
           hookMatch(
             e,
-            expectedKeypress,
-            keypressHook.allowOnTextInput ? null : TEXT_INPUT_TAGS
+            expectedKeystroke,
+            keyboardHook.allowOnTextInput ? null : TEXT_INPUT_TAGS
           )
         );
       });
@@ -195,14 +197,14 @@ export default function useKeyboardControl(
       }
       // If only one match and early completion allowed, complete it
       else if (allowEarlyCompletion && localCandidateHooks.length === 1) {
-        executeKeypressHook(localCandidateHooks[0], e);
+        executeKeyboardHook(localCandidateHooks[0], e);
         setCurrentSequence([]);
       } else {
         updateCandidatesAndMaybeExecuteHooks(localCandidateHooks, e);
       }
     },
     [
-      keypressHooks,
+      keyboardHooks,
       candidateHooks,
       currentSequence,
       setCandidateHooks,
@@ -212,9 +214,9 @@ export default function useKeyboardControl(
   );
 
   useEffect(() => {
-    addEventListener(eventType, handleKeypressEvent);
-    return () => removeEventListener(eventType, handleKeypressEvent);
-  }, [handleKeypressEvent, eventType]);
+    addEventListener(eventType, handleKeyboardEvent);
+    return () => removeEventListener(eventType, handleKeyboardEvent);
+  }, [handleKeyboardEvent, eventType]);
 
   return currentSequence;
 }

@@ -17,7 +17,7 @@ This library is meant to provide a simple React hook `useKeyboardControl()` whic
 "use client";
 
 import useKeyboardControl from "react-keyboard-control";
-import { KeypressHook, TypedKey } from "react-keyboard-control";
+import { KeyboardHook, TypedKey } from "react-keyboard-control";
 import { useCallback, useEffect, useState } from "react";
 
 enum ColorThemes {
@@ -51,7 +51,7 @@ export default function Home() {
     [timesPressedQ]
   );
 
-  const keypressHooks: KeypressHook[] = [
+  const keyboardHooks: KeyboardHook[] = [
     // When command ;, l is pressed, set theme to light
     {
       keyboardEvent: [{ key: ";", metaKey: true }, { key: "l" }],
@@ -87,7 +87,7 @@ export default function Home() {
       callback: () => alert("entered null"),
     },
   ];
-  const currentSequence: TypedKey[] = useKeyboardControl(keypressHooks);
+  const currentSequence: TypedKey[] = useKeyboardControl(keyboardHooks);
 
   return (
     <>
@@ -118,19 +118,19 @@ export default function Home() {
 
 ### `useKeyboardControl(...)`
 
-- `keypressHooks`: A list of `KeypressHook` objects, describing all the keyboard events to track and their associated callback functions.
+- `keyboardHooks`: A list of `KeyboardHook` objects, describing all the keyboard events to track and their associated callback functions.
 - `eventType`: Which of the keyboard events (`"keydown"`, `"keypress"`, `"keyup"`) to track; defaults to `"keydown"`.
-- `allowEarlyCompletion`: If set to true, then a KeypressHook will be resolved as soon as it is the only remaining candidate for the current keystroke sequence; defaults to `false` (you can just shorten your key sequence).
+- `allowEarlyCompletion`: If set to true, then a KeyboardHook will be resolved as soon as it is the only remaining candidate for the current keystroke sequence; defaults to `false` (you can just shorten your key sequence).
 
-### `KeypressHook` interface
+### `KeyboardHook` interface
 
-A KeypressHook is an object with the following:
+A `KeyboardHook` is an object with the following:
 
 - `keyboardEvent`: This can be a single `Partial<KeyboardEvent>` or a list of them, if there are multiple keyboard events in the sequence. You can set any property of `KeyboardEvent` in order to match with the user's keyboard input (typically, just `key` will suffice).
-- `callback`: A function to execute when the keypress hook is matched.
-- `allowOnTextInput`: If set to true, then this keypress hook can still be triggered even if the `target` of the `KeyboardEvent` is an `<input>` or `<textarea>`. Defaults to `false`.
+- `callback`: A function to execute when the keyboard hook is matched.
+- `allowOnTextInput`: If set to true, then this keyboard hook can still be triggered even if the `target` of the `KeyboardEvent` is an `<input>` or `<textarea>`. Defaults to `false`.
 - `preventDefault`: Whether to prevent the `KeyboardEvent`'s default action, if it could be part of a key sequence. This can be used to prevent typing in a text input. Defaults to `false`.
-- `allowWhen`: If set, this can be used to filter out certain keypress hooks based on state. For example, if `;w` is a hook that saves your work, you may want to only allow it when the user is doing something save-able. The advantage of using this instead of inside the callback (e.g. `() => isEditing() && save()`) is that the hook won't think the user is in the middle of a sequence if they press `;` in a non-saveable state.
+- `allowWhen`: If set, this can be used to filter out certain keyboard hooks based on state. For example, if `;w` is a hook that saves your work, you may want to only allow it when the user is doing something save-able. The advantage of using this instead of inside the callback (e.g. `() => isEditing() && save()`) is that the hook won't think the user is in the middle of a sequence if they press `;` in a non-saveable state.
 
 ### `TypedKey` interface
 
@@ -139,6 +139,6 @@ This hook returns a list of `TypedKey`s as the list of keys being used in the cu
 ## Notes
 
 - `{key: "t", shiftKey: true}` will **not** match a capital T, because the actual `key` recorded will be `"T"`, not `"t"`. This applies for other keystrokes too, like `option-o` produces `ø` on my keyboard.
-  - Note that keyboards can be a bit weird; users may have a Mac or Windows keyboard, and further use different layouts e.g. Dvorak. Since `ø` is the `key` recorded by the `KeyboardEvent` when I press `option-o`, that's how I would register the keypress hook. But it might be possible that `option-o` produces a different `key` on a different keyboard.
+  - Note that keyboards can be a bit weird; users may have a Mac or Windows keyboard, and further use different layouts e.g. Dvorak. Since `ø` is the `key` recorded by the `KeyboardEvent` when I press `option-o`, that's how I would register the keyboard hook. But it might be possible that `option-o` produces a different `key` on a different keyboard.
 - `KeyboardEvent`s that are only meta keys (e.g. command, option) are discarded immediately, since we usually only care about the non-meta key that eventually follows. In other words, you can match for `⌘;` but not `⌘` alone.
-- If a key event occurs which doesn't match any candidate keypress hooks, the current key sequence will be discarded (think of hitting "escape")
+- If a key event occurs which doesn't match any candidate keyboard hooks, the current key sequence will be discarded (think of hitting "escape")
