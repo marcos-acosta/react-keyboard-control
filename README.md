@@ -11,6 +11,19 @@ This library is meant to provide a simple React hook `useKeyboardControl()` whic
 - Filter certain keyboard hooks depending on state
 - Set the keyboard event type (`keypress`, `keydown`, `keyup`)
 
+## Install
+
+```
+npm install react-keyboard-control
+```
+
+## Notes
+
+- `{key: "t", shiftKey: true}` will **not** match a capital T, because the actual `key` recorded will be `"T"`, not `"t"`. This applies for other keystrokes too, like `option-o` produces `ø` on my keyboard.
+  - Note that keyboards can be a bit weird; users may have a Mac or Windows keyboard, and further use different layouts e.g. Dvorak. Since `ø` is the `key` recorded by the `KeyboardEvent` when I press `option-o`, that's how I would register the keyboard hook. But it might be possible that `option-o` produces a different `key` on a different keyboard.
+- `KeyboardEvent`s that are only meta keys (e.g. command, option) are discarded immediately, since we usually only care about the non-meta key that eventually follows. In other words, you can match for `⌘;` but not `⌘` alone.
+- If a key event occurs which doesn't match any candidate keyboard hooks, the current key sequence will be discarded (think of hitting "escape")
+
 ## Example
 
 ```js
@@ -135,10 +148,3 @@ A `KeyboardHook` is an object with the following:
 ### `TypedKey` interface
 
 This hook returns a list of `TypedKey`s as the list of keys being used in the current key sequence. A `TypedKey` contains two things: an `event` (the `KeyboardEvent` itself) and a `basicRepresentation`, which is a simple string representation of the keyboard event (e.g. `"⇧T"`). This output can be used to show the user what keystrokes are currently being considered by the keyboard control (similar to other editors like vi).
-
-## Notes
-
-- `{key: "t", shiftKey: true}` will **not** match a capital T, because the actual `key` recorded will be `"T"`, not `"t"`. This applies for other keystrokes too, like `option-o` produces `ø` on my keyboard.
-  - Note that keyboards can be a bit weird; users may have a Mac or Windows keyboard, and further use different layouts e.g. Dvorak. Since `ø` is the `key` recorded by the `KeyboardEvent` when I press `option-o`, that's how I would register the keyboard hook. But it might be possible that `option-o` produces a different `key` on a different keyboard.
-- `KeyboardEvent`s that are only meta keys (e.g. command, option) are discarded immediately, since we usually only care about the non-meta key that eventually follows. In other words, you can match for `⌘;` but not `⌘` alone.
-- If a key event occurs which doesn't match any candidate keyboard hooks, the current key sequence will be discarded (think of hitting "escape")
