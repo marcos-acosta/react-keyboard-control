@@ -25,9 +25,9 @@ type Keystrokes = Partial<KeyboardEvent> | Partial<KeyboardEvent>[];
 export interface KeyboardHook {
   keyboardEvent: Keystrokes;
   callback: () => void;
-  allowOnTextInput?: boolean;
-  preventDefault?: boolean;
-  allowWhen?: boolean;
+  allowOnTextInput?: boolean | null | undefined;
+  preventDefault?: boolean | null | undefined;
+  allowWhen?: boolean | null | undefined;
 }
 
 export interface TypedKey {
