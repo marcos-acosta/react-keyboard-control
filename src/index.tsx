@@ -42,7 +42,9 @@ const partialKeyboardEventMatch = (
   p: Partial<KeyboardEvent>
 ) =>
   Object.keys(p).every(
-    (k) => p[k as KeyboardEventKey] === o[k as KeyboardEventKey]
+    (k) =>
+      k === "contextName" ||
+      p[k as KeyboardEventKey] === o[k as KeyboardEventKey]
   );
 
 const keyboardEventTargetHasTag = (e: KeyboardEvent, tags: string[]) =>
@@ -131,15 +133,13 @@ const orDefault = <T,>(param: undefined | T, default_value: T) =>
 
 /**
  * Creates an event listener to match keyboard events with callback functions.
- * @param keyboardHooks - The list of KeyboardHooks to manage
+ * @param initialKeyboardHooks - The list of KeyboardHooks to manage
  * @param eventType - (default: `keydown`) Which event to listen for (`keydown`, `keyup`, or `keypress`)
- * @param allowEarlyCompletion - (default: `false`) If set to true, then a KeyboardHook will be resolved as soon as it is the only remaining candidate for the current keystroke sequence
  * @returns A list of typed keys in the current (unresolved sequence)
  */
 export default function useKeyboardControl(
   keyboardHooks: KeyboardHook[],
-  eventType: typeof KEYDOWN | typeof KEYUP | typeof KEYPRESS = KEYDOWN,
-  allowEarlyCompletion: boolean = false
+  eventType: typeof KEYDOWN | typeof KEYUP | typeof KEYPRESS = KEYDOWN
 ) {
   const [candidateHooks, setCandidateHooks] = useState(keyboardHooks);
   const [currentSequence, setCurrentSequence] = useState([] as TypedKey[]);
@@ -193,11 +193,6 @@ export default function useKeyboardControl(
       });
       // No matches, clear the current sequence
       if (localCandidateHooks.length === 0) {
-        setCurrentSequence([]);
-      }
-      // If only one match and early completion allowed, complete it
-      else if (allowEarlyCompletion && localCandidateHooks.length === 1) {
-        executeKeyboardHook(localCandidateHooks[0], e);
         setCurrentSequence([]);
       } else {
         updateCandidatesAndMaybeExecuteHooks(localCandidateHooks, e);

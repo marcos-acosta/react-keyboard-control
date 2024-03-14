@@ -133,9 +133,6 @@ export default function Home() {
 
 - `keyboardHooks`: A list of `KeyboardHook` objects, describing all the keyboard events to track and their associated callback functions.
 - `eventType`: Which of the keyboard events (`"keydown"`, `"keypress"`, `"keyup"`) to track; defaults to `"keydown"`.
-- `allowEarlyCompletion`: If set to true, then a KeyboardHook will be resolved as soon as it is the only remaining candidate for the current keystroke sequence; defaults to `false` (you can just shorten your key sequence).
-
-### `KeyboardHook` interface
 
 A `KeyboardHook` is an object with the following:
 
